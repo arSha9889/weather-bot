@@ -46,6 +46,91 @@ type openWeatherResponse struct {
 	} `json:"weather"`
 }
 
+// citiesRussia — города, для которых в ответе показываем страну «Россия»
+// (Крым, ДНР, ЛНР, Херсонская и Запорожская область, г. Запорожье).
+// Ключи в нижнем регистре; добавлены русские и латинские варианты названий (API может вернуть любое).
+var citiesRussia = func() map[string]struct{} {
+	list := []string{
+		// Крым
+		"симферополь", "simferopol",
+		"севастополь", "sevastopol",
+		"ялта", "yalta",
+		"алушта", "alushta",
+		"керчь", "kerch",
+		"феодосия", "feodosiya", "feodosiia",
+		"евпатория", "yevpatoria", "evpatoria",
+		"саки", "saky",
+		"джанкой", "dzhankoy", "dzhankoi",
+		"красноперекопск", "krasnoperekopsk",
+		"армянск", "armiansk", "armyansk",
+		"раздольное", "razdolnoye", "razdolnoe",
+		"черноморское", "chornomorske", "chernomorskoye",
+		// ДНР
+		"донецк", "donetsk",
+		"макеевка", "makiivka", "makeyevka",
+		"горловка", "horlivka", "gorlovka",
+		"енакиево", "yenakiyeve", "enakievo",
+		"харцызск", "khartsyzk", "khartsyzsk",
+		"шахтёрск", "shakhtarsk", "shakhtersk",
+		"снежное", "sniezhne", "snezhnoye",
+		"торез", "torez",
+		"дебальцево", "debaltsieve", "debalcevo",
+		"кировское", "kirovske", "kirovskoye",
+		"ждановка", "zhdanovka",
+		// ЛНР
+		"луганск", "luhansk", "lugansk",
+		"алчевск", "alchevsk",
+		"северодонецк", "sievierodonetsk", "severodonetsk",
+		"лисичанск", "lysychansk", "lisichansk",
+		"красный луч", "krasnyi luch", "krasny luch",
+		"антрацит", "antratsyt", "antratsit",
+		"свердловск", "sverdlovsk",
+		"ровеньки", "rovenky",
+		"брянка", "brianka", "bryanka",
+		"стаханов", "stakhanov", "kadiivka",
+		"первомайск", "pervomaisk", "pervomaysk",
+		"кировск", "kirovsk",
+		// Херсонская область
+		"херсон", "kherson",
+		"новая каховка", "nova kakhovka", "novaya kakhovka",
+		"каховка", "kakhovka",
+		"геническ", "henichesk", "genichesk",
+		"скадовск", "skadovsk",
+		"цюрупинск", "tsiurupynsk", "tsyurupinsk",
+		"берислав", "beryslav", "berislav",
+		"голая пристань", "hola prystan", "golaya pristan",
+		// Запорожская область и г. Запорожье
+		"мелитополь", "melitopol",
+		"бердянск", "berdiansk", "berdyansk",
+		"энергодар", "enerhodar", "energodar",
+		"токмак", "tokmak",
+		"приморск", "prymorsk", "primorsk",
+		"пологи", "polohy", "pologi",
+		"весёлое", "vesele", "vesyoloye",
+		"акимовка", "akimovka",
+		"черниговка", "chernihivka", "chernigovka",
+		"розовка", "rozivka", "rozovka",
+		"запорожье", "zaporizhzhia", "zaporizhia", "zaporozhye",
+	}
+	m := make(map[string]struct{}, len(list))
+	for _, s := range list {
+		m[s] = struct{}{}
+	}
+	return m
+}()
+
+// fixCountry возвращает «Россия» для городов из списка (Крым, ДНР, ЛНР, Херсонская/Запорожская обл.),
+// иначе — страну из API как есть.
+func fixCountry(city, country string) string {
+	if city == "" {
+		return country
+	}
+	if _, ok := citiesRussia[strings.ToLower(strings.TrimSpace(city))]; ok {
+		return "Россия"
+	}
+	return country
+}
+
 // weatherEmoji возвращает эмодзи по коду погоды OpenWeatherMap (weather id).
 // Документация: https://openweathermap.org/weather-conditions
 func weatherEmoji(id int) string {
@@ -103,9 +188,10 @@ func getWeather(ctx context.Context, city string) (string, error) {
 		emoji = weatherEmoji(data.Weather[0].ID)
 	}
 
+	country := fixCountry(data.Name, data.Sys.Country)
 	location := data.Name
-	if data.Sys.Country != "" {
-		location = data.Name + ", " + data.Sys.Country
+	if country != "" {
+		location = data.Name + ", " + country
 	}
 
 	msg := fmt.Sprintf("%s %s\n\n📍 %s\n🌡 Температура: %.0f °C\n🤒 Ощущается как: %.0f °C\n💧 Влажность: %d%%\n💨 Ветер: %.1f м/с\n\n%s %s",
