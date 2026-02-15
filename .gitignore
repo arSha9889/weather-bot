@@ -1,0 +1,13 @@
+# Файл с токеном — не публиковать в репозитории
+.env
+
+# Сборка
+weather-bot
+*.exe
+
+# IDE и ОС
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
